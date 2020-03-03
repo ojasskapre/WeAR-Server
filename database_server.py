@@ -7,9 +7,9 @@ import json
 import os
 
 
-UPLOAD_FOLDER = '/path/to/the/uploads'
-RESIZED_VIDEO_FOLDER = ''
-JSON_2D_OUTPUT = ''
+UPLOAD_FOLDER = 'uploaded_videos'
+RESIZED_VIDEO_FOLDER = 'resized_videos'
+JSON_2D_OUTPUT = 'json_2d'
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app = Flask(__name__)
@@ -25,8 +25,7 @@ def pose_estimation_2D(filename):
 	os.system(f'ffmpeg -i {UPLOAD_FOLDER}/{filename}.mp4 -vf scale=480:848 {RESIZED_VIDEO_FOLDER}/{filename}_480_848.mp4')
 	
 	os.system(f'mkdir {JSON_2D_OUTPUT}/{filename}')
-	os.system(f'python run_video.py --video={RESIZED_VIDEO_FOLDER}/{filename}_480_848.mp4 --resolution=480x848 --output_json={JSON_2D_OUTPUT}/{filename}')
-
+	os.system(f'pose_estimation_scripts/two_d.sh {RESIZED_VIDEO_FOLDER}/{filename}_480_848.mp4 {JSON_2D_OUTPUT}/{filename}')
 	return f' {JSON_2D_OUTPUT}/{filename}'
 
 

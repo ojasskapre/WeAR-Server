@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# IntelliJ
+.idea/
+
+json_2d/
+resized_videos/
+uploaded_videos/
