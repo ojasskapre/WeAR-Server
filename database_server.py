@@ -21,12 +21,22 @@ def allowed_file(filename):
 
 
 def pose_estimation_2D(filename):
-	filename = os.path.splittext(filename)[0]
+	# filename = os.path.splittext(filename)[0]
+	filename = filename[:-4]
 	os.system(f'ffmpeg -i {UPLOAD_FOLDER}/{filename}.mp4 -vf scale=480:848 {RESIZED_VIDEO_FOLDER}/{filename}_480_848.mp4')
 	
 	os.system(f'mkdir {JSON_2D_OUTPUT}/{filename}')
 	os.system(f'pose_estimation_scripts/two_d.sh {RESIZED_VIDEO_FOLDER}/{filename}_480_848.mp4 {JSON_2D_OUTPUT}/{filename}')
-	return f' {JSON_2D_OUTPUT}/{filename}'
+	return f'{JSON_2D_OUTPUT}/{filename}'
+
+
+def pose_estimation_3D(filepath):
+	print(f'pose_estimation_scripts/three_d.sh {filepath}')
+	# os.system(f'pose_estimation_scripts/three_d.sh {filepath}')
+	os.system(f'mv ../3d-pose-baseline/maya/2d_data.json {filepath}_2d.json')
+	os.system(f'mv ../3d-pose-baseline/maya/3d_data.json {filepath}_3d.json')
+	os.system(f'rm -rf {filepath}')
+	# scale_shift
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -54,22 +64,22 @@ def register():
 @app.route('/upload_video', methods=['POST'])
 def upload_video():
 	if request.method == 'POST':
-        # check if the post request has the file part
-        if 'file' not in request.files:
-            flash('No file part')
-            return "No File"
-        file = request.files['file']
-        # if user does not select file, browser also
-        # submit an empty part without filename
-        if file.filename == '':
-            flash('No selected file')
-            return "No File"
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            output_2D = pose_estimation_2D(filename)
-            return output_2D
-    return ""
+		# check if the post request has the file part
+		if 'file' not in request.files:
+			flash('No file part')
+			return "No File"
+		file = request.files['file']
+		# if user does not select file, browser also
+		# submit an empty part without filename
+		if file.filename == '':
+			flash('No selected file')
+			return "No File"
+		if file and allowed_file(file.filename):
+			filename = secure_filename(file.filename)
+			file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+			output_2D = pose_estimation_2D(filename)
+			
+	return ""
 
 
 @app.route('/download_ready', methods=['GET', 'POST'])
