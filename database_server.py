@@ -5,11 +5,11 @@ import socket
 import sqlite3
 import json
 import os
-
+from shift_and_scale import preprocess
 
 UPLOAD_FOLDER = 'uploaded_videos'
 RESIZED_VIDEO_FOLDER = 'resized_videos'
-JSON_2D_OUTPUT = 'json_2d'
+JSON_2D_OUTPUT = 'json_files'
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app = Flask(__name__)
@@ -18,6 +18,16 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 def allowed_file(filename):
 	return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def add_to_db(username, two_d_output_path, three_d_output_path, videoname):
+	conn = sqlite3.connect('WeAR.db')
+	cur = conn.cursor()
+	query = f'insert into user_files values ("{username}", "{videoname}", "{two_d_output_path}", "{three_d_output_path}");'
+	cur.execute(query)
+	conn.commit()
+	conn.close()
+
 
 
 def pose_estimation_2D(filename):
@@ -33,14 +43,31 @@ def pose_estimation_2D(filename):
 def pose_estimation_3D(filepath):
 	print(f'pose_estimation_scripts/three_d.sh {filepath}')
 	# os.system(f'pose_estimation_scripts/three_d.sh {filepath}')
-	os.system(f'mv ../3d-pose-baseline/maya/2d_data.json {filepath}_2d.json')
-	os.system(f'mv ../3d-pose-baseline/maya/3d_data.json {filepath}_3d.json')
+	os.system(f'mv ../3d-pose-baseline/maya/2d_data.json {JSON_2D_OUTPUT}/{filepath}_2d.json')
+	os.system(f'mv ../3d-pose-baseline/maya/3d_data.json {JSON_2D_OUTPUT}/{filepath}_3d.json')
 	os.system(f'rm -rf {filepath}')
-	# scale_shift
+	# TODO remove videos
+	return (f'{JSON_2D_OUTPUT}/{filepath}_2d.json', f'{JSON_2D_OUTPUT}/{filepath}_3d.json')
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+	username = request.form['username']
+	password = request.form['password']
+	role = request.form['role']
+	conn = sqlite3.connect('WeAR.db')
+	cur = conn.cursor()
+	cur.execute('SELECT password, role from Users WHERE username=?', (username))
+	res = cur.fetchone()
+	conn.close()
+	if password == res[0] and role == res[1]:
+		return "success"
+	else:
+		 return "failure"
+
+
+@app.route('/register', methods=['POST'])
+def register():
 	username = request.form['username']
 	password = request.form['password']
 	role = request.form['role']
@@ -49,21 +76,16 @@ def login():
 	print(username, password, role, screenheight, screenwidth)
 	conn = sqlite3.connect('WeAR.db')
 	cur = conn.cursor()
-	cur.execute('UPDATE Users SET screenheight=? , screenwidth=? WHERE username=?', (screenheight, screenwidth, username))
+	query = f'insert into Users (`username`, `password`, `role`, `screenheight`, `screenwidth) values ("{username}", "{password}", "{role}", "{screenheight}", "{screenwidth}");'
+	cur.execute(query)
 	conn.commit()
 	conn.close()
-	return "success"
-	# return "failure"
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-	pass
 
 
 @app.route('/upload_video', methods=['POST'])
 def upload_video():
 	if request.method == 'POST':
+		username = request.form['username']
 		# check if the post request has the file part
 		if 'file' not in request.files:
 			flash('No file part')
@@ -78,8 +100,12 @@ def upload_video():
 			filename = secure_filename(file.filename)
 			file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 			output_2D = pose_estimation_2D(filename)
-			
-	return ""
+			2d_output_path, 3d_output_path = pose_estimation_3D(output_2D)
+			preprocess(2d_output_path, 2d_output_path.split('/')[-1])
+			add_to_db(username, 2d_output_path, 3d_output_path, filename)
+			return "success"
+
+	return "nani!"
 
 
 @app.route('/download_ready', methods=['GET', 'POST'])

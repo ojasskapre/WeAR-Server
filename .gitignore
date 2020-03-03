@@ -131,6 +131,6 @@ dmypy.json
 # IntelliJ
 .idea/
 
-json_2d/
+json_files/
 resized_videos/
 uploaded_videos/
